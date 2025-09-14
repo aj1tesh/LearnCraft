@@ -57,7 +57,7 @@ const ProgressView = () => {
     );
   }
 
-  const courses = Object.values(progressData);
+  const courses = progressData && typeof progressData === 'object' ? Object.values(progressData) : [];
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
@@ -101,7 +101,12 @@ const ProgressView = () => {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {courses.map((courseData) => {
-            const { course, lectures, completedCount, totalCount } = courseData;
+            // Add safety checks for course data
+            if (!courseData || !courseData.course || !Array.isArray(courseData.lectures)) {
+              return null;
+            }
+            
+            const { course, lectures, completedCount = 0, totalCount = 0 } = courseData;
             const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
             
             return (
@@ -146,9 +151,17 @@ const ProgressView = () => {
 
                 {/* Lectures Progress */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {lectures.map((lectureProgress) => {
-                    const lecture = lectureProgress.lecture;
-                    const progress = lectureProgress.progress;
+                  {lectures.map((lecture) => {
+                    // Add safety checks
+                    if (!lecture || !lecture.progress) {
+                      return null;
+                    }
+                    
+                    const progress = lecture.progress;
+                    
+                    // Ensure progress has required properties with defaults
+                    const isCompleted = progress.isCompleted || false;
+                    const quizScore = progress.quizScore || null;
                     
                     return (
                       <div
@@ -172,10 +185,10 @@ const ProgressView = () => {
                             justifyContent: 'center',
                             fontSize: '0.875rem',
                             fontWeight: '500',
-                            backgroundColor: progress.isCompleted ? '#f3f4f6' : '#f3f4f6',
-                            color: progress.isCompleted ? 'black' : '#6b7280'
+                            backgroundColor: isCompleted ? '#f3f4f6' : '#f3f4f6',
+                            color: isCompleted ? 'black' : '#6b7280'
                           }}>
-                            {progress.isCompleted ? '✓' : '○'}
+                            {isCompleted ? '✓' : '○'}
                           </div>
                           <div>
                             <h4 style={{ fontWeight: '500', color: 'black', marginBottom: '0.125rem' }}>
@@ -188,20 +201,20 @@ const ProgressView = () => {
                         </div>
                         
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          {lecture.type === 'quiz' && progress.quizScore !== null && (
+                          {lecture.type === 'quiz' && quizScore !== null && (
                             <span style={{
                               fontSize: '0.875rem',
                               fontWeight: '500',
                               padding: '0.25rem 0.5rem',
                               borderRadius: '0.25rem',
-                              backgroundColor: progress.quizScore >= 70 ? '#f3f4f6' : '#fee2e2',
-                              color: progress.quizScore >= 70 ? 'black' : '#991b1b'
+                              backgroundColor: quizScore >= 70 ? '#f3f4f6' : '#fee2e2',
+                              color: quizScore >= 70 ? 'black' : '#991b1b'
                             }}>
-                              {progress.quizScore.toFixed(1)}%
+                              {quizScore.toFixed(1)}%
                             </span>
                           )}
                           
-                          {progress.isCompleted ? (
+                          {isCompleted ? (
                             <span style={{ fontSize: '0.875rem', color: 'black', fontWeight: '500' }}>
                               Completed
                             </span>

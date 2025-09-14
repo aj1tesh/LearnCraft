@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 
 const CourseDetail = () => {
   const { id } = useParams();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [deletingLecture, setDeletingLecture] = useState(null);
+  const [deletingCourse, setDeletingCourse] = useState(false);
 
   useEffect(() => {
     fetchCourse();
@@ -24,6 +27,46 @@ const CourseDetail = () => {
       console.error('Error fetching course:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteLecture = async (lectureId) => {
+    if (!window.confirm('Are you sure you want to delete this lecture? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setDeletingLecture(lectureId);
+      await api.delete(`/lectures/${lectureId}`);
+      // Refresh the course data to update the lecture list
+      await fetchCourse();
+    } catch (error) {
+      console.error('Error deleting lecture:', error);
+      alert('Failed to delete lecture. Please try again.');
+    } finally {
+      setDeletingLecture(null);
+    }
+  };
+
+  const handleDeleteCourse = async () => {
+    if (!window.confirm(`Are you sure you want to delete "${course.title}"? This will permanently delete the course and all its lectures, quiz questions, and student progress. This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setDeletingCourse(true);
+      await api.delete(`/courses/${id}`);
+      
+      // Navigate back to instructor dashboard
+      navigate('/instructor');
+      
+      // Show success message
+      alert('Course deleted successfully');
+    } catch (error) {
+      console.error('Error deleting course:', error);
+      alert('Failed to delete course. Please try again.');
+    } finally {
+      setDeletingCourse(false);
     }
   };
 
@@ -90,21 +133,40 @@ const CourseDetail = () => {
             </div>
             
             {isInstructor && (
-              <Link
-                to={`/instructor/courses/${course.id}/lectures/new`}
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  backgroundColor: 'black',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '0.25rem',
-                  textDecoration: 'none',
-                  fontSize: '0.875rem',
-                  fontWeight: '500'
-                }}
-              >
-                Add Lecture
-              </Link>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <Link
+                  to={`/instructor/courses/${course.id}/lectures/new`}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    backgroundColor: 'black',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.25rem',
+                    textDecoration: 'none',
+                    fontSize: '0.875rem',
+                    fontWeight: '500'
+                  }}
+                >
+                  Add Lecture
+                </Link>
+                <button
+                  onClick={handleDeleteCourse}
+                  disabled={deletingCourse}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    backgroundColor: 'white',
+                    color: '#ef4444',
+                    border: '1px solid #ef4444',
+                    borderRadius: '0.25rem',
+                    fontSize: '0.875rem',
+                    fontWeight: '500',
+                    cursor: deletingCourse ? 'not-allowed' : 'pointer',
+                    opacity: deletingCourse ? 0.7 : 1
+                  }}
+                >
+                  {deletingCourse ? 'Deleting...' : 'Delete Course'}
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -171,9 +233,20 @@ const CourseDetail = () => {
                         {index + 1}
                       </div>
                       <div>
-                        <h3 style={{ fontWeight: '500', color: 'black', marginBottom: '0.25rem' }}>
-                          {lecture.title}
-                        </h3>
+                        {user?.role === 'instructor' ? (
+                          <Link
+                            to={`/courses/${course.id}/lectures/${lecture.id}`}
+                            style={{ textDecoration: 'none' }}
+                          >
+                            <h3 style={{ fontWeight: '500', color: 'black', marginBottom: '0.25rem', cursor: 'pointer' }}>
+                              {lecture.title}
+                            </h3>
+                          </Link>
+                        ) : (
+                          <h3 style={{ fontWeight: '500', color: 'black', marginBottom: '0.25rem' }}>
+                            {lecture.title}
+                          </h3>
+                        )}
                         <p style={{ fontSize: '0.875rem', color: '#6b7280', textTransform: 'capitalize' }}>
                           {lecture.type} Lecture
                         </p>
@@ -209,22 +282,41 @@ const CourseDetail = () => {
                         >
                           Start Lecture
                         </Link>
-                      ) : isInstructor ? (
-                        <Link
-                          to={`/instructor/courses/${course.id}/lectures/${lecture.id}/edit`}
-                          style={{
-                            padding: '0.5rem 1rem',
-                            backgroundColor: 'transparent',
-                            color: 'black',
-                            border: '1px solid black',
-                            borderRadius: '0.25rem',
-                            textDecoration: 'none',
-                            fontSize: '0.875rem',
-                            fontWeight: '500'
-                          }}
-                        >
-                          Edit
-                        </Link>
+                      ) : user?.role === 'instructor' ? (
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <Link
+                            to={`/courses/${course.id}/lectures/${lecture.id}`}
+                            style={{
+                              padding: '0.5rem 1rem',
+                              backgroundColor: 'black',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '0.25rem',
+                              textDecoration: 'none',
+                              fontSize: '0.875rem',
+                              fontWeight: '500'
+                            }}
+                          >
+                            View Lecture
+                          </Link>
+                          <button
+                            onClick={() => handleDeleteLecture(lecture.id)}
+                            disabled={deletingLecture === lecture.id}
+                            style={{
+                              padding: '0.5rem 1rem',
+                              backgroundColor: 'white',
+                              color: '#dc2626',
+                              border: '1px solid #dc2626',
+                              borderRadius: '0.25rem',
+                              fontSize: '0.875rem',
+                              fontWeight: '500',
+                              cursor: deletingLecture === lecture.id ? 'not-allowed' : 'pointer',
+                              opacity: deletingLecture === lecture.id ? 0.6 : 1
+                            }}
+                          >
+                            {deletingLecture === lecture.id ? 'Deleting...' : 'Delete'}
+                          </button>
+                        </div>
                       ) : null}
                     </div>
                   </div>

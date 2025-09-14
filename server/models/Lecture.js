@@ -15,12 +15,21 @@ const Lecture = sequelize.define('Lecture', {
     }
   },
   type: {
-    type: DataTypes.ENUM('reading', 'quiz'),
+    type: DataTypes.ENUM('reading', 'quiz', 'text-document'),
     allowNull: false
   },
   content: {
     type: DataTypes.TEXT,
     allowNull: true // For reading lectures
+  },
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: true // For text documents
+  },
+  attachments: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [] // Array of file objects with filename, originalName, mimetype, size
   },
   order: {
     type: DataTypes.INTEGER,

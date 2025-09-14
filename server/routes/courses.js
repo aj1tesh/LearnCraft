@@ -2,10 +2,11 @@ const express = require('express');
 const { Course, Lecture, QuizQuestion, User } = require('../models');
 const { authenticateToken, requireInstructor, requireStudent } = require('../middleware/auth');
 const { validateCourseCreation, validateLectureCreation, validateQuizQuestion } = require('../middleware/validation');
+const { upload, handleUploadErrors } = require('../middleware/upload');
 
 const router = express.Router();
 
-// Get all courses (for students to browse)
+// GET / - List all courses with instructor and lecture info
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const courses = await Course.findAll({
@@ -38,7 +39,7 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
-// Get single course with lectures
+// GET /:id - Get course details with lectures
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -85,7 +86,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Create new course (instructors only)
+// POST / - Create new course (instructor only)
 router.post('/', authenticateToken, requireInstructor, validateCourseCreation, async (req, res) => {
   try {
     const { title, description } = req.body;
@@ -97,7 +98,7 @@ router.post('/', authenticateToken, requireInstructor, validateCourseCreation, a
       instructorId
     });
 
-    // Fetch the created course with instructor details
+    // Return course with instructor details
     const createdCourse = await Course.findByPk(course.id, {
       include: [
         {
@@ -122,7 +123,7 @@ router.post('/', authenticateToken, requireInstructor, validateCourseCreation, a
   }
 });
 
-// Get instructor's courses
+// GET /instructor/my-courses - Get instructor's courses
 router.get('/instructor/my-courses', authenticateToken, requireInstructor, async (req, res) => {
   try {
     const instructorId = req.user.id;
@@ -154,10 +155,15 @@ router.get('/instructor/my-courses', authenticateToken, requireInstructor, async
 });
 
 // Add lecture to course (instructors only)
-router.post('/:courseId/lectures', authenticateToken, requireInstructor, validateLectureCreation, async (req, res) => {
+router.post('/:courseId/lectures', 
+  authenticateToken, 
+  requireInstructor, 
+  upload.array('files', 5), 
+  handleUploadErrors,
+  async (req, res) => {
   try {
     const { courseId } = req.params;
-    const { title, type, content, order } = req.body;
+    const { title, type, content, description, order } = req.body;
 
     // Check if course exists and belongs to the instructor
     const course = await Course.findOne({
@@ -171,11 +177,25 @@ router.post('/:courseId/lectures', authenticateToken, requireInstructor, validat
       });
     }
 
+    // Process uploaded files
+    let attachments = [];
+    if (req.files && req.files.length > 0) {
+      attachments = req.files.map(file => ({
+        filename: file.filename,
+        originalName: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size,
+        path: file.path
+      }));
+    }
+
     // Create lecture
     const lecture = await Lecture.create({
       title,
       type,
-      content: type === 'reading' ? content : null,
+      content: (type === 'reading' || type === 'text-document') ? content : null,
+      description: type === 'text-document' ? description : null,
+      attachments: attachments.length > 0 ? attachments : null,
       order: order || 0,
       courseId
     });
@@ -242,6 +262,68 @@ router.post('/:courseId/lectures/:lectureId/questions', authenticateToken, requi
     });
   } catch (error) {
     console.error('Create quiz question error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+// DELETE /:id - Delete course (instructor only)
+router.delete('/:id', authenticateToken, requireInstructor, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const instructorId = req.user.id;
+
+    // Find the course and verify ownership
+    const course = await Course.findOne({
+      where: { id, instructorId },
+      include: [
+        {
+          model: Lecture,
+          as: 'lectures',
+          include: [
+            {
+              model: QuizQuestion,
+              as: 'questions'
+            }
+          ]
+        }
+      ]
+    });
+
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found or you do not have permission to delete it'
+      });
+    }
+
+    // Delete all quiz questions first
+    for (const lecture of course.lectures) {
+      if (lecture.questions && lecture.questions.length > 0) {
+        await QuizQuestion.destroy({
+          where: { lectureId: lecture.id }
+        });
+      }
+    }
+
+    // Delete all lectures
+    await Lecture.destroy({
+      where: { courseId: id }
+    });
+
+    // Delete the course
+    await Course.destroy({
+      where: { id }
+    });
+
+    res.json({
+      success: true,
+      message: 'Course and all associated data deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete course error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'

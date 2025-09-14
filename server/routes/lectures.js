@@ -5,121 +5,12 @@ const { validateQuizSubmission, validateLectureCreation, validateQuizQuestion } 
 
 const router = express.Router();
 
-// Update lecture (instructors only)
-router.put('/:lectureId', authenticateToken, requireInstructor, validateLectureCreation, async (req, res) => {
+// GET /:lectureId - Get lecture details (students & instructors)
+router.get('/:lectureId', authenticateToken, async (req, res) => {
   try {
     const { lectureId } = req.params;
-    const { title, content } = req.body;
-    const instructorId = req.user.id;
-
-    // Find the lecture and verify ownership
-    const lecture = await Lecture.findByPk(lectureId, {
-      include: [
-        {
-          model: Course,
-          as: 'course',
-          where: { instructorId }
-        }
-      ]
-    });
-
-    if (!lecture) {
-      return res.status(404).json({
-        success: false,
-        message: 'Lecture not found or you do not have permission to modify it'
-      });
-    }
-
-    // Update lecture
-    await lecture.update({
-      title,
-      content: lecture.type === 'reading' ? content : lecture.content
-    });
-
-    res.json({
-      success: true,
-      message: 'Lecture updated successfully',
-      data: { lecture }
-    });
-  } catch (error) {
-    console.error('Update lecture error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-});
-
-// Update quiz questions (instructors only)
-router.put('/:lectureId/questions', authenticateToken, requireInstructor, async (req, res) => {
-  try {
-    const { lectureId } = req.params;
-    const { questions } = req.body;
-    const instructorId = req.user.id;
-
-    // Find the lecture and verify ownership
-    const lecture = await Lecture.findByPk(lectureId, {
-      include: [
-        {
-          model: Course,
-          as: 'course',
-          where: { instructorId }
-        }
-      ]
-    });
-
-    if (!lecture) {
-      return res.status(404).json({
-        success: false,
-        message: 'Lecture not found or you do not have permission to modify it'
-      });
-    }
-
-    if (lecture.type !== 'quiz') {
-      return res.status(400).json({
-        success: false,
-        message: 'This endpoint is only for quiz lectures'
-      });
-    }
-
-    // Delete existing questions
-    await QuizQuestion.destroy({
-      where: { lectureId }
-    });
-
-    // Create new questions
-    const createdQuestions = [];
-    for (const question of questions) {
-      if (question.questionText.trim() && question.options.some(opt => opt.trim())) {
-        const createdQuestion = await QuizQuestion.create({
-          questionText: question.questionText,
-          options: question.options,
-          correctAnswer: question.correctAnswer,
-          lectureId
-        });
-        createdQuestions.push(createdQuestion);
-      }
-    }
-
-    res.json({
-      success: true,
-      message: 'Quiz questions updated successfully',
-      data: { questions: createdQuestions }
-    });
-  } catch (error) {
-    console.error('Update quiz questions error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-});
-
-// Get lecture details (students only)
-router.get('/:lectureId', authenticateToken, requireStudent, async (req, res) => {
-  try {
-    const { lectureId } = req.params;
-    const studentId = req.user.id;
+    const userId = req.user.id;
+    const userRole = req.user.role;
 
     const lecture = await Lecture.findByPk(lectureId, {
       include: [
@@ -143,10 +34,21 @@ router.get('/:lectureId', authenticateToken, requireStudent, async (req, res) =>
       });
     }
 
-    // Get student's progress for this lecture
-    const progress = await StudentProgress.findOne({
-      where: { studentId, lectureId }
-    });
+    // For instructors, check if they own the course
+    if (userRole === 'instructor' && lecture.course.instructorId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have permission to view this lecture'
+      });
+    }
+
+    // Get student's progress for this lecture (only for students)
+    let progress = null;
+    if (userRole === 'student') {
+      progress = await StudentProgress.findOne({
+        where: { studentId: userId, lectureId }
+      });
+    }
 
     res.json({
       success: true,
@@ -164,14 +66,13 @@ router.get('/:lectureId', authenticateToken, requireStudent, async (req, res) =>
   }
 });
 
-// Update lecture (instructors only)
-router.put('/:lectureId', authenticateToken, requireInstructor, validateLectureCreation, async (req, res) => {
+// DELETE /:lectureId - Delete lecture (instructor only)
+router.delete('/:lectureId', authenticateToken, requireInstructor, async (req, res) => {
   try {
     const { lectureId } = req.params;
-    const { title, content } = req.body;
     const instructorId = req.user.id;
 
-    // Find the lecture and verify ownership
+    // Verify ownership
     const lecture = await Lecture.findByPk(lectureId, {
       include: [
         {
@@ -185,23 +86,21 @@ router.put('/:lectureId', authenticateToken, requireInstructor, validateLectureC
     if (!lecture) {
       return res.status(404).json({
         success: false,
-        message: 'Lecture not found or you do not have permission to modify it'
+        message: 'Lecture not found or you do not have permission to delete it'
       });
     }
 
-    // Update lecture
-    await lecture.update({
-      title,
-      content: lecture.type === 'reading' ? content : lecture.content
-    });
+    // Cascade delete related data
+    await QuizQuestion.destroy({ where: { lectureId } });
+    await StudentProgress.destroy({ where: { lectureId } });
+    await lecture.destroy();
 
     res.json({
       success: true,
-      message: 'Lecture updated successfully',
-      data: { lecture }
+      message: 'Lecture deleted successfully'
     });
   } catch (error) {
-    console.error('Update lecture error:', error);
+    console.error('Delete lecture error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -209,72 +108,7 @@ router.put('/:lectureId', authenticateToken, requireInstructor, validateLectureC
   }
 });
 
-// Update quiz questions (instructors only)
-router.put('/:lectureId/questions', authenticateToken, requireInstructor, async (req, res) => {
-  try {
-    const { lectureId } = req.params;
-    const { questions } = req.body;
-    const instructorId = req.user.id;
-
-    // Find the lecture and verify ownership
-    const lecture = await Lecture.findByPk(lectureId, {
-      include: [
-        {
-          model: Course,
-          as: 'course',
-          where: { instructorId }
-        }
-      ]
-    });
-
-    if (!lecture) {
-      return res.status(404).json({
-        success: false,
-        message: 'Lecture not found or you do not have permission to modify it'
-      });
-    }
-
-    if (lecture.type !== 'quiz') {
-      return res.status(400).json({
-        success: false,
-        message: 'This endpoint is only for quiz lectures'
-      });
-    }
-
-    // Delete existing questions
-    await QuizQuestion.destroy({
-      where: { lectureId }
-    });
-
-    // Create new questions
-    const createdQuestions = [];
-    for (const question of questions) {
-      if (question.questionText.trim() && question.options.some(opt => opt.trim())) {
-        const createdQuestion = await QuizQuestion.create({
-          questionText: question.questionText,
-          options: question.options,
-          correctAnswer: question.correctAnswer,
-          lectureId
-        });
-        createdQuestions.push(createdQuestion);
-      }
-    }
-
-    res.json({
-      success: true,
-      message: 'Quiz questions updated successfully',
-      data: { questions: createdQuestions }
-    });
-  } catch (error) {
-    console.error('Update quiz questions error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-});
-
-// Mark reading lecture as completed (students only)
+// Mark lecture as completed (students only)
 router.post('/:lectureId/complete', authenticateToken, requireStudent, async (req, res) => {
   try {
     const { lectureId } = req.params;
@@ -288,10 +122,11 @@ router.post('/:lectureId/complete', authenticateToken, requireStudent, async (re
       });
     }
 
-    if (lecture.type !== 'reading') {
+    // Allow completion for reading and text-document lectures
+    if (lecture.type !== 'reading' && lecture.type !== 'text-document') {
       return res.status(400).json({
         success: false,
-        message: 'This endpoint is only for reading lectures'
+        message: 'This endpoint is only for reading and text-document lectures'
       });
     }
 

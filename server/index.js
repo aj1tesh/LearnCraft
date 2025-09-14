@@ -3,27 +3,28 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const path = require('path');
 const { syncDatabase } = require('./models');
 
-// Import routes
+// Routes
 const authRoutes = require('./routes/auth');
 const courseRoutes = require('./routes/courses');
 const lectureRoutes = require('./routes/lectures');
 const progressRoutes = require('./routes/progress');
 
-// Import middleware
+// Middleware
 const { authenticateToken } = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Security middleware
+// Security headers
 app.use(helmet());
 
-// Rate limiting (more lenient for development)
+// Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 100 : 1000, // More requests allowed in development
+  max: process.env.NODE_ENV === 'production' ? 100 : 1000,
   message: {
     success: false,
     message: 'Too many requests from this IP, please try again later.'
@@ -34,7 +35,7 @@ app.use(limiter);
 // CORS configuration
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://yourdomain.com'] // Replace with your production domain
+    ? [process.env.FRONTEND_URL || 'http://localhost:3000'] // Use environment variable or fallback
     : true, // Allow all origins in development
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -54,6 +55,14 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Serve static files (uploads)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Serve static files from React build in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../client/build')));
+}
+
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
@@ -70,11 +79,18 @@ app.get('/api/me', authenticateToken, (req, res) => {
   });
 });
 
-// 404 handler
-app.use('*', (req, res) => {
+// Catch-all handler for React Router (must be after API routes)
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
+  });
+}
+
+// 404 handler for API routes
+app.use('/api/*', (req, res) => {
   res.status(404).json({
     success: false,
-    message: 'Route not found'
+    message: 'API route not found'
   });
 });
 

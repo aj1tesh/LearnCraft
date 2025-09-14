@@ -24,7 +24,7 @@ StudentProgress.belongsTo(Lecture, { foreignKey: 'lectureId', as: 'lecture' });
 // Sync database
 const syncDatabase = async () => {
   try {
-    await sequelize.sync({ force: true }); // Force recreate tables for clean start
+    await sequelize.sync({ force: false }); // Don't force recreate - preserve existing data
     console.log('Database synchronized successfully');
   } catch (error) {
     console.error('Error synchronizing database:', error);

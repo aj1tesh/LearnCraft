@@ -3,27 +3,18 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Layout from './components/Layout/Layout';
 
-// Auth Components
+// Components
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
-
-// Course Components
 import CourseList from './components/Courses/CourseList';
 import CourseDetail from './components/Courses/CourseDetail';
-
-// Lecture Components
 import LectureViewer from './components/Lectures/LectureViewer';
-
-// Instructor Components
 import InstructorDashboard from './components/Instructor/InstructorDashboard';
 import CreateCourse from './components/Instructor/CreateCourse';
 import CreateLecture from './components/Instructor/CreateLecture';
-import EditLecture from './components/Instructor/EditLecture';
-
-// Progress Components
 import ProgressView from './components/Progress/ProgressView';
 
-// Protected Route Component
+// Route protection wrapper
 const ProtectedRoute = ({ children, requiredRole = null }) => {
   const { isAuthenticated, user, loading } = useAuth();
 
@@ -46,7 +37,7 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
   return children;
 };
 
-// Public Route Component (redirect if authenticated)
+// Redirect authenticated users away from auth pages
 const PublicRoute = ({ children }) => {
   const { isAuthenticated, user, loading } = useAuth();
 
@@ -59,7 +50,7 @@ const PublicRoute = ({ children }) => {
   }
 
   if (isAuthenticated) {
-    // Redirect based on user role
+    // Role-based redirect
     if (user?.role === 'instructor') {
       return <Navigate to="/instructor" replace />;
     } else {
@@ -70,7 +61,7 @@ const PublicRoute = ({ children }) => {
   return children;
 };
 
-// Home Component
+// Landing page component
 const Home = () => {
   const { isAuthenticated, user } = useAuth();
 
@@ -117,7 +108,7 @@ const Home = () => {
 function App() {
   return (
     <AuthProvider>
-      <Router>
+      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Layout>
           <Routes>
             {/* Public Routes */}
@@ -159,7 +150,7 @@ function App() {
             <Route 
               path="/courses/:courseId/lectures/:lectureId" 
               element={
-                <ProtectedRoute requiredRole="student">
+                <ProtectedRoute>
                   <LectureViewer />
                 </ProtectedRoute>
               } 
@@ -195,14 +186,6 @@ function App() {
               element={
                 <ProtectedRoute requiredRole="instructor">
                   <CreateLecture />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/instructor/courses/:courseId/lectures/:lectureId/edit" 
-              element={
-                <ProtectedRoute requiredRole="instructor">
-                  <EditLecture />
                 </ProtectedRoute>
               } 
             />

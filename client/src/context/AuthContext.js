@@ -3,6 +3,7 @@ import api from '../services/api';
 
 const AuthContext = createContext();
 
+// Initial auth state
 const initialState = {
   user: null,
   token: localStorage.getItem('token'),
@@ -11,6 +12,7 @@ const initialState = {
   error: null
 };
 
+// Auth state reducer
 const authReducer = (state, action) => {
   switch (action.type) {
     case 'AUTH_START':

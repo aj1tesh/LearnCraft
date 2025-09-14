@@ -5,7 +5,7 @@ const Layout = ({ children }) => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      <main className="py-8">
+      <main className="py-8 overflow-y-auto">
         {children}
       </main>
     </div>

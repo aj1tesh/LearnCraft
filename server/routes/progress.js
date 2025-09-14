@@ -9,48 +9,56 @@ router.get('/', authenticateToken, requireStudent, async (req, res) => {
   try {
     const studentId = req.user.id;
 
-    const progress = await StudentProgress.findAll({
-      where: { studentId },
+    // Get all courses with their lectures
+    const courses = await Course.findAll({
       include: [
         {
           model: Lecture,
-          as: 'lecture',
-          include: [
-            {
-              model: Course,
-              as: 'course',
-              attributes: ['id', 'title', 'description']
-            }
-          ]
+          as: 'lectures',
+          attributes: ['id', 'title', 'type', 'order'],
+          order: [['order', 'ASC']]
         }
       ],
-      order: [['completedAt', 'DESC']]
+      order: [['createdAt', 'DESC']]
     });
 
-    // Group progress by course
-    const progressByCourse = {};
+    // Get all student progress records
+    const progress = await StudentProgress.findAll({
+      where: { studentId }
+    });
+
+    // Create a map of progress by lecture ID
+    const progressMap = {};
     progress.forEach(item => {
-      const courseId = item.lecture.course.id;
-      if (!progressByCourse[courseId]) {
-        progressByCourse[courseId] = {
-          course: item.lecture.course,
-          lectures: [],
-          completedCount: 0,
-          totalCount: 0
-        };
-      }
-      progressByCourse[courseId].lectures.push(item);
-      if (item.isCompleted) {
-        progressByCourse[courseId].completedCount++;
-      }
+      progressMap[item.lectureId] = item;
     });
 
-    // Get total lecture count for each course
-    for (const courseId in progressByCourse) {
-      const totalLectures = await Lecture.count({
-        where: { courseId }
-      });
-      progressByCourse[courseId].totalCount = totalLectures;
+    // Build progress data for each course
+    const progressByCourse = {};
+    
+    for (const course of courses) {
+      const lecturesWithProgress = course.lectures.map(lecture => ({
+        ...lecture.toJSON(),
+        progress: progressMap[lecture.id] || {
+          isCompleted: false,
+          quizScore: null,
+          quizAttempts: 0
+        }
+      }));
+
+      const completedCount = lecturesWithProgress.filter(l => l.progress.isCompleted).length;
+      const totalCount = lecturesWithProgress.length;
+
+      progressByCourse[course.id] = {
+        course: {
+          id: course.id,
+          title: course.title,
+          description: course.description
+        },
+        lectures: lecturesWithProgress,
+        completedCount,
+        totalCount
+      };
     }
 
     res.json({

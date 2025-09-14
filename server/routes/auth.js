@@ -2,17 +2,16 @@ const express = require('express');
 const { User } = require('../models');
 const { generateToken } = require('../utils/jwt');
 const { validateUserRegistration, validateUserLogin } = require('../middleware/validation');
+const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Register new user
+// POST /register - Create new user account
 router.post('/register', validateUserRegistration, async (req, res) => {
   try {
-    console.log('Registration request body:', req.body);
-    console.log('Registration request headers:', req.headers);
     const { email, password, firstName, lastName, role } = req.body;
 
-    // Check if user already exists
+    // Check for existing user
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
       return res.status(400).json({
@@ -21,7 +20,7 @@ router.post('/register', validateUserRegistration, async (req, res) => {
       });
     }
 
-    // Create new user
+    // Create user and return token
     const user = await User.create({
       email,
       password,
@@ -30,7 +29,6 @@ router.post('/register', validateUserRegistration, async (req, res) => {
       role
     });
 
-    // Generate JWT token
     const token = generateToken(user.id);
 
     res.status(201).json({
@@ -50,12 +48,11 @@ router.post('/register', validateUserRegistration, async (req, res) => {
   }
 });
 
-// Login user
+// POST /login - Authenticate user
 router.post('/login', validateUserLogin, async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Find user by email
     const user = await User.findOne({ where: { email } });
     if (!user) {
       return res.status(401).json({
@@ -64,7 +61,6 @@ router.post('/login', validateUserLogin, async (req, res) => {
       });
     }
 
-    // Check password
     const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
       return res.status(401).json({
@@ -73,7 +69,6 @@ router.post('/login', validateUserLogin, async (req, res) => {
       });
     }
 
-    // Generate JWT token
     const token = generateToken(user.id);
 
     res.json({
@@ -93,18 +88,9 @@ router.post('/login', validateUserLogin, async (req, res) => {
   }
 });
 
-// Get current user profile
-router.get('/me', async (req, res) => {
+// GET /me - Get current user profile
+router.get('/me', authenticateToken, async (req, res) => {
   try {
-    // This route should be protected by authenticateToken middleware
-    // The user will be available in req.user
-    if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Authentication required'
-      });
-    }
-
     res.json({
       success: true,
       data: {

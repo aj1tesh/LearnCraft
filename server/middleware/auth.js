@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 
+// Verify JWT token and attach user to request
 const authenticateToken = async (req, res, next) => {
   try {
     const authHeader = req.headers['authorization'];
@@ -45,6 +46,7 @@ const authenticateToken = async (req, res, next) => {
   }
 };
 
+// Check if user has required role
 const requireRole = (roles) => {
   return (req, res, next) => {
     if (!req.user) {
@@ -68,6 +70,7 @@ const requireRole = (roles) => {
   };
 };
 
+// Role-specific middleware
 const requireInstructor = requireRole('instructor');
 const requireStudent = requireRole('student');
 

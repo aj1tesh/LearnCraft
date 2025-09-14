@@ -68,8 +68,8 @@ const validateLectureCreation = [
     .isLength({ min: 1, max: 200 })
     .withMessage('Lecture title is required and must be less than 200 characters'),
   body('type')
-    .isIn(['reading', 'quiz'])
-    .withMessage('Lecture type must be either reading or quiz'),
+    .isIn(['reading', 'quiz', 'text-document'])
+    .withMessage('Lecture type must be either reading, quiz, or text-document'),
   body('content')
     .optional()
     .trim()
