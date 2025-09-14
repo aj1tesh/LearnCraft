@@ -35,7 +35,7 @@ app.use(limiter);
 // CORS configuration
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? [process.env.FRONTEND_URL || 'https://learncraft-platform.onrender.com'] // Use environment variable or fallback
+    ? ['https://learncraft-mh8y.onrender.com'] // Use your actual Render URL
     : true, // Allow all origins in development
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
