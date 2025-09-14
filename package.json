@@ -9,6 +9,7 @@
     "client": "cd client && npm start",
     "install-all": "npm install && cd server && npm install && cd ../client && npm install",
     "build": "cd client && npm install && npm run build",
+    "prestart": "cd server && npm install",
     "start": "cd server && npm start"
   },
   "keywords": [
