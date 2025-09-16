@@ -5,7 +5,6 @@ const { validateQuizSubmission, validateLectureCreation, validateQuizQuestion } 
 
 const router = express.Router();
 
-// GET /:lectureId - Get lecture details (students & instructors)
 router.get('/:lectureId', authenticateToken, async (req, res) => {
   try {
     const { lectureId } = req.params;
@@ -34,7 +33,6 @@ router.get('/:lectureId', authenticateToken, async (req, res) => {
       });
     }
 
-    // For instructors, check if they own the course
     if (userRole === 'instructor' && lecture.course.instructorId !== userId) {
       return res.status(403).json({
         success: false,
@@ -42,7 +40,6 @@ router.get('/:lectureId', authenticateToken, async (req, res) => {
       });
     }
 
-    // Get student's progress for this lecture (only for students)
     let progress = null;
     if (userRole === 'student') {
       progress = await StudentProgress.findOne({
@@ -66,13 +63,11 @@ router.get('/:lectureId', authenticateToken, async (req, res) => {
   }
 });
 
-// DELETE /:lectureId - Delete lecture (instructor only)
 router.delete('/:lectureId', authenticateToken, requireInstructor, async (req, res) => {
   try {
     const { lectureId } = req.params;
     const instructorId = req.user.id;
 
-    // Verify ownership
     const lecture = await Lecture.findByPk(lectureId, {
       include: [
         {
@@ -90,7 +85,6 @@ router.delete('/:lectureId', authenticateToken, requireInstructor, async (req, r
       });
     }
 
-    // Cascade delete related data
     await QuizQuestion.destroy({ where: { lectureId } });
     await StudentProgress.destroy({ where: { lectureId } });
     await lecture.destroy();
@@ -108,7 +102,6 @@ router.delete('/:lectureId', authenticateToken, requireInstructor, async (req, r
   }
 });
 
-// Mark lecture as completed (students only)
 router.post('/:lectureId/complete', authenticateToken, requireStudent, async (req, res) => {
   try {
     const { lectureId } = req.params;
@@ -122,7 +115,6 @@ router.post('/:lectureId/complete', authenticateToken, requireStudent, async (re
       });
     }
 
-    // Allow completion for reading and text-document lectures
     if (lecture.type !== 'reading' && lecture.type !== 'text-document') {
       return res.status(400).json({
         success: false,
@@ -130,7 +122,6 @@ router.post('/:lectureId/complete', authenticateToken, requireStudent, async (re
       });
     }
 
-    // Check if already completed
     const existingProgress = await StudentProgress.findOne({
       where: { studentId, lectureId }
     });
@@ -143,7 +134,6 @@ router.post('/:lectureId/complete', authenticateToken, requireStudent, async (re
       });
     }
 
-    // Mark as completed
     const progress = await StudentProgress.upsert({
       studentId,
       lectureId,
@@ -165,7 +155,6 @@ router.post('/:lectureId/complete', authenticateToken, requireStudent, async (re
   }
 });
 
-// Submit quiz (students only)
 router.post('/:lectureId/quiz/submit', authenticateToken, requireStudent, validateQuizSubmission, async (req, res) => {
   try {
     const { lectureId } = req.params;
@@ -204,7 +193,6 @@ router.post('/:lectureId/quiz/submit', authenticateToken, requireStudent, valida
       });
     }
 
-    // Validate answers array length
     if (answers.length !== questions.length) {
       return res.status(400).json({
         success: false,
@@ -212,7 +200,6 @@ router.post('/:lectureId/quiz/submit', authenticateToken, requireStudent, valida
       });
     }
 
-    // Grade the quiz
     let correctAnswers = 0;
     const results = questions.map((question, index) => {
       const userAnswer = answers[index];
@@ -229,9 +216,8 @@ router.post('/:lectureId/quiz/submit', authenticateToken, requireStudent, valida
     });
 
     const score = (correctAnswers / questions.length) * 100;
-    const passed = score >= 70; // 70% passing grade
+    const passed = score >= 70;
 
-    // Get or create progress record
     const [progress] = await StudentProgress.upsert({
       studentId,
       lectureId,

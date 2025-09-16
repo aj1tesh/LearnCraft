@@ -14,7 +14,6 @@ const handleValidationErrors = (req, res, next) => {
   next();
 };
 
-// User validation rules
 const validateUserRegistration = [
   body('email')
     .isEmail()
@@ -48,7 +47,6 @@ const validateUserLogin = [
   handleValidationErrors
 ];
 
-// Course validation rules
 const validateCourseCreation = [
   body('title')
     .trim()
@@ -61,7 +59,6 @@ const validateCourseCreation = [
   handleValidationErrors
 ];
 
-// Lecture validation rules
 const validateLectureCreation = [
   body('title')
     .trim()
@@ -82,7 +79,6 @@ const validateLectureCreation = [
   handleValidationErrors
 ];
 
-// Quiz question validation rules
 const validateQuizQuestion = [
   body('questionText')
     .trim()
@@ -101,7 +97,6 @@ const validateQuizQuestion = [
   handleValidationErrors
 ];
 
-// Quiz submission validation
 const validateQuizSubmission = [
   body('answers')
     .isArray()

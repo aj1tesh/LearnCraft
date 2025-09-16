@@ -6,7 +6,6 @@ const { upload, handleUploadErrors } = require('../middleware/upload');
 
 const router = express.Router();
 
-// GET / - List all courses with instructor and lecture info
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const courses = await Course.findAll({
@@ -39,7 +38,6 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
-// GET /:id - Get course details with lectures
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -86,7 +84,6 @@ router.get('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// POST / - Create new course (instructor only)
 router.post('/', authenticateToken, requireInstructor, validateCourseCreation, async (req, res) => {
   try {
     const { title, description } = req.body;
@@ -98,7 +95,6 @@ router.post('/', authenticateToken, requireInstructor, validateCourseCreation, a
       instructorId
     });
 
-    // Return course with instructor details
     const createdCourse = await Course.findByPk(course.id, {
       include: [
         {
@@ -123,7 +119,6 @@ router.post('/', authenticateToken, requireInstructor, validateCourseCreation, a
   }
 });
 
-// GET /instructor/my-courses - Get instructor's courses
 router.get('/instructor/my-courses', authenticateToken, requireInstructor, async (req, res) => {
   try {
     const instructorId = req.user.id;
@@ -154,7 +149,6 @@ router.get('/instructor/my-courses', authenticateToken, requireInstructor, async
   }
 });
 
-// Add lecture to course (instructors only)
 router.post('/:courseId/lectures', 
   authenticateToken, 
   requireInstructor, 
@@ -165,7 +159,6 @@ router.post('/:courseId/lectures',
     const { courseId } = req.params;
     const { title, type, content, description, order } = req.body;
 
-    // Check if course exists and belongs to the instructor
     const course = await Course.findOne({
       where: { id: courseId, instructorId: req.user.id }
     });
@@ -177,7 +170,6 @@ router.post('/:courseId/lectures',
       });
     }
 
-    // Process uploaded files
     let attachments = [];
     if (req.files && req.files.length > 0) {
       attachments = req.files.map(file => ({
@@ -189,7 +181,6 @@ router.post('/:courseId/lectures',
       }));
     }
 
-    // Create lecture
     const lecture = await Lecture.create({
       title,
       type,
@@ -214,13 +205,11 @@ router.post('/:courseId/lectures',
   }
 });
 
-// Add quiz questions to lecture (instructors only)
 router.post('/:courseId/lectures/:lectureId/questions', authenticateToken, requireInstructor, validateQuizQuestion, async (req, res) => {
   try {
     const { courseId, lectureId } = req.params;
     const { questionText, options, correctAnswer } = req.body;
 
-    // Verify course and lecture ownership
     const course = await Course.findOne({
       where: { id: courseId, instructorId: req.user.id },
       include: [
@@ -239,7 +228,6 @@ router.post('/:courseId/lectures/:lectureId/questions', authenticateToken, requi
       });
     }
 
-    // Validate correct answer index
     if (correctAnswer >= options.length || correctAnswer < 0) {
       return res.status(400).json({
         success: false,
@@ -247,7 +235,6 @@ router.post('/:courseId/lectures/:lectureId/questions', authenticateToken, requi
       });
     }
 
-    // Create quiz question
     const question = await QuizQuestion.create({
       questionText,
       options,
@@ -269,13 +256,11 @@ router.post('/:courseId/lectures/:lectureId/questions', authenticateToken, requi
   }
 });
 
-// DELETE /:id - Delete course (instructor only)
 router.delete('/:id', authenticateToken, requireInstructor, async (req, res) => {
   try {
     const { id } = req.params;
     const instructorId = req.user.id;
 
-    // Find the course and verify ownership
     const course = await Course.findOne({
       where: { id, instructorId },
       include: [
@@ -299,7 +284,6 @@ router.delete('/:id', authenticateToken, requireInstructor, async (req, res) => 
       });
     }
 
-    // Delete all quiz questions first
     for (const lecture of course.lectures) {
       if (lecture.questions && lecture.questions.length > 0) {
         await QuizQuestion.destroy({
@@ -308,12 +292,10 @@ router.delete('/:id', authenticateToken, requireInstructor, async (req, res) => 
       }
     }
 
-    // Delete all lectures
     await Lecture.destroy({
       where: { courseId: id }
     });
 
-    // Delete the course
     await Course.destroy({
       where: { id }
     });

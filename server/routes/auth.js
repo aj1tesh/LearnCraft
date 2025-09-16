@@ -6,12 +6,10 @@ const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
-// POST /register - Create new user account
 router.post('/register', validateUserRegistration, async (req, res) => {
   try {
     const { email, password, firstName, lastName, role } = req.body;
 
-    // Check for existing user
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
       return res.status(400).json({
@@ -20,7 +18,6 @@ router.post('/register', validateUserRegistration, async (req, res) => {
       });
     }
 
-    // Create user and return token
     const user = await User.create({
       email,
       password,
@@ -48,7 +45,6 @@ router.post('/register', validateUserRegistration, async (req, res) => {
   }
 });
 
-// POST /login - Authenticate user
 router.post('/login', validateUserLogin, async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -88,7 +84,6 @@ router.post('/login', validateUserLogin, async (req, res) => {
   }
 });
 
-// GET /me - Get current user profile
 router.get('/me', authenticateToken, async (req, res) => {
   try {
     res.json({

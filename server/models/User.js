@@ -2,7 +2,6 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const bcrypt = require('bcryptjs');
 
-// User model with auth fields
 const User = sequelize.define('User', {
   id: {
     type: DataTypes.INTEGER,
@@ -46,7 +45,6 @@ const User = sequelize.define('User', {
 }, {
   tableName: 'users',
   hooks: {
-    // Hash password before save
     beforeCreate: async (user) => {
       if (user.password) {
         user.password = await bcrypt.hash(user.password, 12);
@@ -60,12 +58,10 @@ const User = sequelize.define('User', {
   }
 });
 
-// Password comparison method
 User.prototype.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-// Remove password from JSON output
 User.prototype.toJSON = function() {
   const values = Object.assign({}, this.get());
   delete values.password;

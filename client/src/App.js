@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Layout from './components/Layout/Layout';
 
-// Components
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
 import CourseList from './components/Courses/CourseList';
@@ -14,7 +13,6 @@ import CreateCourse from './components/Instructor/CreateCourse';
 import CreateLecture from './components/Instructor/CreateLecture';
 import ProgressView from './components/Progress/ProgressView';
 
-// Route protection wrapper
 const ProtectedRoute = ({ children, requiredRole = null }) => {
   const { isAuthenticated, user, loading } = useAuth();
 
@@ -37,7 +35,6 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
   return children;
 };
 
-// Redirect authenticated users away from auth pages
 const PublicRoute = ({ children }) => {
   const { isAuthenticated, user, loading } = useAuth();
 
@@ -50,7 +47,6 @@ const PublicRoute = ({ children }) => {
   }
 
   if (isAuthenticated) {
-    // Role-based redirect
     if (user?.role === 'instructor') {
       return <Navigate to="/instructor" replace />;
     } else {
@@ -61,7 +57,6 @@ const PublicRoute = ({ children }) => {
   return children;
 };
 
-// Landing page component
 const Home = () => {
   const { isAuthenticated, user } = useAuth();
 
@@ -97,7 +92,6 @@ const Home = () => {
     );
   }
 
-  // Redirect authenticated users to appropriate dashboard
   if (user?.role === 'instructor') {
     return <Navigate to="/instructor" replace />;
   } else {

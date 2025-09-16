@@ -6,24 +6,19 @@ const rateLimit = require('express-rate-limit');
 const path = require('path');
 const { syncDatabase } = require('./models');
 
-// Routes
 const authRoutes = require('./routes/auth');
 const courseRoutes = require('./routes/courses');
 const lectureRoutes = require('./routes/lectures');
 const progressRoutes = require('./routes/progress');
-
-// Middleware
 const { authenticateToken } = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Security headers
 app.use(helmet());
 
-// Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: process.env.NODE_ENV === 'production' ? 100 : 1000,
   message: {
     success: false,
@@ -32,21 +27,18 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// CORS configuration
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://learncraft-mh8y.onrender.com'] // Use your actual Render URL
-    : true, // Allow all origins in development
+    ? ['https://learncraft-mh8y.onrender.com']
+    : true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Health check endpoint
 app.get('/health', (req, res) => {
   res.json({
     success: true,
@@ -55,24 +47,39 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Serve static files (uploads)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Serve static files from React build in production
 if (process.env.NODE_ENV === 'production') {
-  const buildPath = path.join(__dirname, '../client/build');
-  console.log('Serving static files from:', buildPath);
-  console.log('Build directory exists:', require('fs').existsSync(buildPath));
-  app.use(express.static(buildPath));
+  const possiblePaths = [
+    path.join(__dirname, '../client/build'),
+    path.join(__dirname, '../../client/build'),
+    path.join(process.cwd(), 'client/build'),
+    path.join(process.cwd(), 'build')
+  ];
+  
+  let buildPath = null;
+  for (const testPath of possiblePaths) {
+    if (require('fs').existsSync(testPath)) {
+      buildPath = testPath;
+      break;
+    }
+  }
+  
+  if (buildPath) {
+    console.log('Serving static files from:', buildPath);
+    console.log('Build directory exists:', true);
+    app.use(express.static(buildPath));
+  } else {
+    console.error('Build directory not found in any of these locations:');
+    possiblePaths.forEach(p => console.error('  -', p));
+  }
 }
 
-// API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/lectures', lectureRoutes);
 app.use('/api/progress', progressRoutes);
 
-// Protected route to get current user (for testing auth)
 app.get('/api/me', authenticateToken, (req, res) => {
   res.json({
     success: true,
@@ -82,17 +89,35 @@ app.get('/api/me', authenticateToken, (req, res) => {
   });
 });
 
-// Catch-all handler for React Router (must be after API routes)
 if (process.env.NODE_ENV === 'production') {
   app.get('*', (req, res) => {
-    const indexPath = path.join(__dirname, '../client/build', 'index.html');
-    console.log('Serving index.html from:', indexPath);
-    console.log('Index file exists:', require('fs').existsSync(indexPath));
-    res.sendFile(indexPath);
+    const possibleIndexPaths = [
+      path.join(__dirname, '../client/build', 'index.html'),
+      path.join(__dirname, '../../client/build', 'index.html'),
+      path.join(process.cwd(), 'client/build', 'index.html'),
+      path.join(process.cwd(), 'build', 'index.html')
+    ];
+    
+    let indexPath = null;
+    for (const testPath of possibleIndexPaths) {
+      if (require('fs').existsSync(testPath)) {
+        indexPath = testPath;
+        break;
+      }
+    }
+    
+    if (indexPath) {
+      console.log('Serving index.html from:', indexPath);
+      console.log('Index file exists:', true);
+      res.sendFile(indexPath);
+    } else {
+      console.error('index.html not found in any of these locations:');
+      possibleIndexPaths.forEach(p => console.error('  -', p));
+      res.status(404).send('Frontend build not found');
+    }
   });
 }
 
-// 404 handler for API routes
 app.use('/api/*', (req, res) => {
   res.status(404).json({
     success: false,
@@ -100,11 +125,9 @@ app.use('/api/*', (req, res) => {
   });
 });
 
-// Global error handler
 app.use((error, req, res, next) => {
   console.error('Global error handler:', error);
   
-  // Don't leak error details in production
   const message = process.env.NODE_ENV === 'production' 
     ? 'Internal server error' 
     : error.message;
@@ -116,10 +139,8 @@ app.use((error, req, res, next) => {
   });
 });
 
-// Start server
 const startServer = async () => {
   try {
-    // Sync database
     await syncDatabase();
     
     app.listen(PORT, () => {
@@ -128,6 +149,25 @@ const startServer = async () => {
       console.log(`🔗 Health check: http://localhost:${PORT}/health`);
       console.log(`🌐 Production mode: ${process.env.NODE_ENV === 'production'}`);
       console.log(`📁 Current directory: ${__dirname}`);
+      console.log(`📁 Process working directory: ${process.cwd()}`);
+      
+      if (process.env.NODE_ENV === 'production') {
+        console.log('📂 Directory contents:');
+        try {
+          const fs = require('fs');
+          const dirs = ['..', '../..', process.cwd()];
+          dirs.forEach(dir => {
+            try {
+              const contents = fs.readdirSync(dir);
+              console.log(`  ${dir}:`, contents);
+            } catch (e) {
+              console.log(`  ${dir}: (cannot read)`);
+            }
+          });
+        } catch (e) {
+          console.log('  Error listing directories:', e.message);
+        }
+      }
     });
   } catch (error) {
     console.error('Failed to start server:', error);

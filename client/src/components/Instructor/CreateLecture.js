@@ -64,7 +64,6 @@ const CreateLecture = () => {
     
     setFiles(prev => [...prev, ...validFiles]);
     
-    // Reset the file input to allow selecting the same file again
     e.target.value = '';
   };
 
@@ -95,7 +94,6 @@ const CreateLecture = () => {
   const removeOption = (questionIndex, optionIndex) => {
     const newQuestions = [...questions];
     newQuestions[questionIndex].options.splice(optionIndex, 1);
-    // Adjust correct answer if necessary
     if (newQuestions[questionIndex].correctAnswer >= optionIndex) {
       newQuestions[questionIndex].correctAnswer = Math.max(0, newQuestions[questionIndex].correctAnswer - 1);
     }
@@ -117,14 +115,12 @@ const CreateLecture = () => {
     setLoading(true);
     
     try {
-      // Validate form based on type
       if (formData.type === 'quiz' && questions.length === 0) {
         setError('Please add at least one question for the quiz');
         setLoading(false);
         return;
       }
 
-      // Validate quiz questions
       if (formData.type === 'quiz' && questions.length > 0) {
         for (let i = 0; i < questions.length; i++) {
           const question = questions[i];
@@ -157,7 +153,6 @@ const CreateLecture = () => {
         return;
       }
 
-      // Create FormData for file upload
       const submitData = new FormData();
       submitData.append('title', formData.title);
       submitData.append('type', formData.type);
@@ -165,18 +160,15 @@ const CreateLecture = () => {
       submitData.append('description', formData.description);
       submitData.append('order', formData.order);
 
-      // Add files if any
       files.forEach((file, index) => {
         submitData.append(`files`, file);
       });
 
-      // Create lecture with file upload
       const lectureResponse = await api.post(`/courses/${courseId}/lectures`, submitData);
       
       const createdLecture = lectureResponse.data.data.lecture;
       setLectureCreated(true);
 
-      // If it's a quiz, create questions
       if (formData.type === 'quiz' && questions.length > 0) {
         for (const question of questions) {
           if (question.questionText.trim() && question.options.some(opt => opt.trim())) {
@@ -185,7 +177,6 @@ const CreateLecture = () => {
         }
       }
 
-      // Navigate to course detail
       navigate(`/courses/${courseId}`);
     } catch (error) {
       console.error('Lecture creation error:', error);

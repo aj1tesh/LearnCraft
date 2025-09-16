@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-// Axios instance with base config
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api',
   timeout: 10000,
@@ -9,7 +8,6 @@ const api = axios.create({
   },
 });
 
-// Add auth token to requests
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -17,7 +15,6 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     
-    // Let axios handle FormData content-type
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type'];
     }
@@ -29,14 +26,12 @@ api.interceptors.request.use(
   }
 );
 
-// Handle auth errors
 api.interceptors.response.use(
   (response) => {
     return response;
   },
   (error) => {
     if (error.response?.status === 401) {
-      // Clear token and redirect on auth failure
       localStorage.removeItem('token');
       window.location.href = '/login';
     }

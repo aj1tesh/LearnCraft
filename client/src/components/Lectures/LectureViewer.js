@@ -25,7 +25,6 @@ const LectureViewer = () => {
       setLecture(lectureData);
       setProgress(progressData);
       
-      // Initialize quiz answers if it's a quiz
       if (lectureData.type === 'quiz' && lectureData.questions) {
         setQuizAnswers(new Array(lectureData.questions.length).fill(null));
       }

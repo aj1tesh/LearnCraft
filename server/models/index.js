@@ -5,7 +5,6 @@ const Lecture = require('./Lecture');
 const QuizQuestion = require('./QuizQuestion');
 const StudentProgress = require('./StudentProgress');
 
-// Define associations
 User.hasMany(Course, { foreignKey: 'instructorId', as: 'courses' });
 Course.belongsTo(User, { foreignKey: 'instructorId', as: 'instructor' });
 
@@ -21,14 +20,13 @@ StudentProgress.belongsTo(User, { foreignKey: 'studentId', as: 'student' });
 Lecture.hasMany(StudentProgress, { foreignKey: 'lectureId', as: 'studentProgress' });
 StudentProgress.belongsTo(Lecture, { foreignKey: 'lectureId', as: 'lecture' });
 
-// Sync database
 const syncDatabase = async () => {
   try {
-    await sequelize.sync({ force: false }); // Don't force recreate - preserve existing data
+    await sequelize.sync({ force: false });
     console.log('Database synchronized successfully');
   } catch (error) {
     console.error('Error synchronizing database:', error);
-    throw error; // Re-throw to prevent server startup if DB sync fails
+    throw error;
   }
 };
 
