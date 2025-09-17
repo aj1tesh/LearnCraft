@@ -65,38 +65,33 @@ app.get('/health', (req, res) => {
   });
 });
 
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Handle favicon.ico requests
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end(); // No content response
+});
 
-if (process.env.NODE_ENV === 'production') {
-  const possiblePaths = [
-    path.join(__dirname, '../client/build'),
-    path.join(__dirname, '../../client/build'),
-    path.join(process.cwd(), 'client/build'),
-    path.join(process.cwd(), 'build')
-  ];
-  
-  let buildPath = null;
-  for (const testPath of possiblePaths) {
-    if (require('fs').existsSync(testPath)) {
-      buildPath = testPath;
-      break;
-    }
-  }
-  
-  if (buildPath) {
-    console.log('Serving static files from:', buildPath);
-    console.log('Build directory exists:', true);
-    app.use(express.static(buildPath));
-  } else {
-    console.error('Build directory not found in any of these locations:');
-    possiblePaths.forEach(p => console.error('  -', p));
-  }
-}
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/lectures', lectureRoutes);
 app.use('/api/progress', progressRoutes);
+
+// API root endpoint
+app.get('/api', (req, res) => {
+  res.json({
+    success: true,
+    message: 'LearnCraft API Server',
+    version: '1.0.0',
+    endpoints: {
+      auth: '/api/auth',
+      courses: '/api/courses',
+      lectures: '/api/lectures',
+      progress: '/api/progress'
+    }
+  });
+});
 
 app.get('/api/me', authenticateToken, (req, res) => {
   res.json({
@@ -107,39 +102,21 @@ app.get('/api/me', authenticateToken, (req, res) => {
   });
 });
 
-if (process.env.NODE_ENV === 'production') {
-  app.get('*', (req, res) => {
-    const possibleIndexPaths = [
-      path.join(__dirname, '../client/build', 'index.html'),
-      path.join(__dirname, '../../client/build', 'index.html'),
-      path.join(process.cwd(), 'client/build', 'index.html'),
-      path.join(process.cwd(), 'build', 'index.html')
-    ];
-    
-    let indexPath = null;
-    for (const testPath of possibleIndexPaths) {
-      if (require('fs').existsSync(testPath)) {
-        indexPath = testPath;
-        break;
-      }
-    }
-    
-    if (indexPath) {
-      console.log('Serving index.html from:', indexPath);
-      console.log('Index file exists:', true);
-      res.sendFile(indexPath);
-    } else {
-      console.error('index.html not found in any of these locations:');
-      possibleIndexPaths.forEach(p => console.error('  -', p));
-      res.status(404).send('Frontend build not found');
-    }
-  });
-}
-
+// 404 handler for API routes
 app.use('/api/*', (req, res) => {
   res.status(404).json({
     success: false,
-    message: 'API route not found'
+    message: 'API route not found',
+    availableRoutes: ['/api/auth', '/api/courses', '/api/lectures', '/api/progress', '/api/me']
+  });
+});
+
+// Catch-all handler for non-API routes
+app.get('*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'API endpoint not found',
+    note: 'This is an API server. Please use the frontend application or API endpoints.'
   });
 });
 
@@ -162,30 +139,11 @@ const startServer = async () => {
     await syncDatabase();
     
     app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`🚀 LearnCraft API Server running on port ${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-      console.log(`🌐 Production mode: ${process.env.NODE_ENV === 'production'}`);
-      console.log(`📁 Current directory: ${__dirname}`);
-      console.log(`📁 Process working directory: ${process.cwd()}`);
-      
-      if (process.env.NODE_ENV === 'production') {
-        console.log('📂 Directory contents:');
-        try {
-          const fs = require('fs');
-          const dirs = ['..', '../..', process.cwd()];
-          dirs.forEach(dir => {
-            try {
-              const contents = fs.readdirSync(dir);
-              console.log(`  ${dir}:`, contents);
-            } catch (e) {
-              console.log(`  ${dir}: (cannot read)`);
-            }
-          });
-        } catch (e) {
-          console.log('  Error listing directories:', e.message);
-        }
-      }
+      console.log(`🔗 API info: http://localhost:${PORT}/api`);
+      console.log(`🌐 CORS enabled for: ${process.env.NODE_ENV === 'production' ? 'https://learncraft-frontend.onrender.com' : 'all origins'}`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
