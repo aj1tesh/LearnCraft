@@ -65,6 +65,11 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Keep-alive endpoint for monitoring services
+app.get('/ping', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // Handle favicon.ico requests
 app.get('/favicon.ico', (req, res) => {
   res.status(204).end(); // No content response
@@ -136,14 +141,18 @@ app.use((error, req, res, next) => {
 
 const startServer = async () => {
   try {
-    await syncDatabase();
-    
+    // Start server immediately, sync database in background
     app.listen(PORT, () => {
       console.log(`🚀 LearnCraft API Server running on port ${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 Health check: http://localhost:${PORT}/health`);
       console.log(`🔗 API info: http://localhost:${PORT}/api`);
       console.log(`🌐 CORS enabled for: ${process.env.NODE_ENV === 'production' ? 'https://learncraft-frontend.onrender.com' : 'all origins'}`);
+    });
+    
+    // Sync database in background (non-blocking)
+    syncDatabase().catch(error => {
+      console.error('Database sync error:', error);
     });
   } catch (error) {
     console.error('Failed to start server:', error);

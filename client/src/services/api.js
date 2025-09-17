@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: (process.env.REACT_APP_API_URL || 'https://learncraft-backend-uyya.onrender.com').replace(/\/$/, ''),
-  timeout: 10000,
+  timeout: 30000, // Increased to 30 seconds
   headers: {
     'Content-Type': 'application/json',
   },
@@ -33,6 +33,7 @@ api.interceptors.request.use(
 
 api.interceptors.response.use(
   (response) => {
+    console.log('API Response:', response.status, response.config.url);
     return response;
   },
   (error) => {
@@ -41,8 +42,14 @@ api.interceptors.response.use(
       url: error.config?.url,
       method: error.config?.method,
       status: error.response?.status,
-      message: error.response?.data?.message || error.message
+      message: error.response?.data?.message || error.message,
+      code: error.code,
+      timeout: error.code === 'ECONNABORTED'
     });
+    
+    if (error.code === 'ECONNABORTED') {
+      console.error('Request timeout - Backend might be down or slow');
+    }
     
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
