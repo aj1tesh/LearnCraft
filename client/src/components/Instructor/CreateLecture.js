@@ -25,7 +25,7 @@ const CreateLecture = () => {
 
   const fetchCourseInfo = async () => {
     try {
-      const response = await api.get(`/courses/${courseId}`);
+      const response = await api.get(`/api/courses/${courseId}`);
       const course = response.data.data.course;
       setFormData(prev => ({
         ...prev,
@@ -164,7 +164,7 @@ const CreateLecture = () => {
         submitData.append(`files`, file);
       });
 
-      const lectureResponse = await api.post(`/courses/${courseId}/lectures`, submitData);
+      const lectureResponse = await api.post(`/api/courses/${courseId}/lectures`, submitData);
       
       const createdLecture = lectureResponse.data.data.lecture;
       setLectureCreated(true);
@@ -172,7 +172,7 @@ const CreateLecture = () => {
       if (formData.type === 'quiz' && questions.length > 0) {
         for (const question of questions) {
           if (question.questionText.trim() && question.options.some(opt => opt.trim())) {
-            await api.post(`/courses/${courseId}/lectures/${createdLecture.id}/questions`, question);
+            await api.post(`/api/courses/${courseId}/lectures/${createdLecture.id}/questions`, question);
           }
         }
       }

@@ -14,7 +14,7 @@ const ProgressView = () => {
   const fetchProgress = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/progress');
+      const response = await api.get('/api/progress');
       setProgressData(response.data.data.progressByCourse);
     } catch (error) {
       setError('Failed to fetch progress');

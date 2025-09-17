@@ -25,7 +25,7 @@ const CreateCourse = () => {
     setLoading(true);
     
     try {
-      const response = await api.post('/courses', formData);
+      const response = await api.post('/api/courses', formData);
       const courseId = response.data.data.course.id;
       navigate(`/instructor/courses/${courseId}/lectures/new`);
     } catch (error) {

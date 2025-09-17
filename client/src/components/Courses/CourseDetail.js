@@ -20,7 +20,7 @@ const CourseDetail = () => {
   const fetchCourse = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/courses/${id}`);
+      const response = await api.get(`/api/courses/${id}`);
       setCourse(response.data.data.course);
     } catch (error) {
       setError('Failed to fetch course details');
@@ -37,7 +37,7 @@ const CourseDetail = () => {
 
     try {
       setDeletingLecture(lectureId);
-      await api.delete(`/lectures/${lectureId}`);
+      await api.delete(`/api/lectures/${lectureId}`);
       // Refresh the course data to update the lecture list
       await fetchCourse();
     } catch (error) {
@@ -55,7 +55,7 @@ const CourseDetail = () => {
 
     try {
       setDeletingCourse(true);
-      await api.delete(`/courses/${id}`);
+      await api.delete(`/api/courses/${id}`);
       
       // Navigate back to instructor dashboard
       navigate('/instructor');

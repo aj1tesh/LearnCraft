@@ -19,7 +19,7 @@ const LectureViewer = () => {
   const fetchLecture = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/lectures/${lectureId}`);
+      const response = await api.get(`/api/lectures/${lectureId}`);
       const { lecture: lectureData, progress: progressData } = response.data.data;
       
       setLecture(lectureData);
@@ -42,7 +42,7 @@ const LectureViewer = () => {
 
   const handleReadingComplete = async () => {
     try {
-      const response = await api.post(`/lectures/${lectureId}/complete`);
+      const response = await api.post(`/api/lectures/${lectureId}/complete`);
       setProgress(response.data.data.progress);
     } catch (error) {
       console.error('Error completing lecture:', error);
@@ -63,7 +63,7 @@ const LectureViewer = () => {
 
     try {
       setSubmittingQuiz(true);
-      const response = await api.post(`/lectures/${lectureId}/quiz/submit`, {
+      const response = await api.post(`/api/lectures/${lectureId}/quiz/submit`, {
         answers: quizAnswers
       });
       
@@ -84,7 +84,7 @@ const LectureViewer = () => {
 
     try {
       setDeleting(true);
-      await api.delete(`/lectures/${lectureId}`);
+      await api.delete(`/api/lectures/${lectureId}`);
       navigate(`/courses/${courseId}`);
     } catch (error) {
       console.error('Error deleting lecture:', error);

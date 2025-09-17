@@ -14,7 +14,7 @@ const CourseList = () => {
   const fetchCourses = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/courses');
+      const response = await api.get('/api/courses');
       setCourses(response.data.data.courses);
     } catch (error) {
       setError('Failed to fetch courses');
