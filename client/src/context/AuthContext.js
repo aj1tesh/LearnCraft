@@ -75,7 +75,7 @@ export const AuthProvider = ({ children }) => {
     const checkAuth = async () => {
       if (state.token) {
         try {
-          const response = await api.get('/auth/me');
+          const response = await api.get('/me');
           dispatch({
             type: 'AUTH_SUCCESS',
             payload: {

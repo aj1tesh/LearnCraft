@@ -10,11 +10,16 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
+    // Debug logging
+    console.log('Making API request to:', config.baseURL + config.url);
+    
+    // Add auth token
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     
+    // Handle FormData content-type
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type'];
     }
@@ -31,6 +36,14 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
+    // Enhanced error logging
+    console.error('API Error:', {
+      url: error.config?.url,
+      method: error.config?.method,
+      status: error.response?.status,
+      message: error.response?.data?.message || error.message
+    });
+    
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       window.location.href = '/login';
