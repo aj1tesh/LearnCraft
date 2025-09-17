@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'https://learncraft-backend-uyya.onrender.com/api',
+  baseURL: (process.env.REACT_APP_API_URL || 'https://learncraft-backend-uyya.onrender.com/api').replace(/\/$/, ''),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
