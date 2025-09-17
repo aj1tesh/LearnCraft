@@ -75,7 +75,7 @@ export const AuthProvider = ({ children }) => {
     const checkAuth = async () => {
       if (state.token) {
         try {
-          const response = await api.get('/me');
+          const response = await api.get('/api/me');
           dispatch({
             type: 'AUTH_SUCCESS',
             payload: {
@@ -98,7 +98,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     dispatch({ type: 'AUTH_START' });
     try {
-      const response = await api.post('/auth/login', { email, password });
+      const response = await api.post('/api/auth/login', { email, password });
       const { user, token } = response.data.data;
       
       localStorage.setItem('token', token);
@@ -118,7 +118,7 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     dispatch({ type: 'AUTH_START' });
     try {
-      const response = await api.post('/auth/register', userData);
+      const response = await api.post('/api/auth/register', userData);
       const { user, token } = response.data.data;
       
       localStorage.setItem('token', token);
